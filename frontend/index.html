@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BlockHash Predictor – Shardeum Testnet</title>
+  <style>
+    :root {
+      --bg: #0f0f14;
+      --card: #1a1a24;
+      --accent: #7c5cfc;
+      --accent2: #00e5a0;
+      --text: #e4e4ef;
+      --muted: #8888a0;
+      --danger: #ff5c5c;
+      --border: #2a2a3a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+    h1 { font-size: 2rem; margin-bottom: .25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 2rem; font-size: .9rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 640px;
+      margin-bottom: 1.5rem;
+    }
+    .card h2 {
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: .5rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: .88rem;
+    }
+    .info-row:last-child { border: none; }
+    .info-row .label { color: var(--muted); }
+    .info-row .value {
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      word-break: break-all;
+      text-align: right;
+      max-width: 65%;
+    }
+    .options-grid {
+      display: grid;
+      gap: .75rem;
+      margin-top: 1rem;
+    }
+    .option-btn {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .75rem 1rem;
+      color: var(--text);
+      cursor: pointer;
+      text-align: left;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: .78rem;
+      transition: all .15s;
+      word-break: break-all;
+    }
+    .option-btn:hover { border-color: var(--accent); background: #1e1e30; }
+    .option-btn.selected { border-color: var(--accent); background: #25204a; }
+    .custom-input {
+      width: 100%;
+      padding: .75rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: .82rem;
+      margin-top: .75rem;
+    }
+    .custom-input:focus { outline: none; border-color: var(--accent); }
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: .65rem 1.5rem;
+      border-radius: 8px;
+      font-size: .95rem;
+      cursor: pointer;
+      margin-top: 1rem;
+      transition: opacity .15s;
+    }
+    .btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-primary:hover:not(:disabled) { opacity: .85; }
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      background: transparent;
+      color: var(--accent2);
+      border: 1px solid var(--accent2);
+      padding: .55rem 1.2rem;
+      border-radius: 8px;
+      font-size: .85rem;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn-secondary:hover { opacity: .7; }
+    .status { margin-top: 1rem; padding: .75rem; border-radius: 8px; font-size: .85rem; }
+    .status.success { background: #0c3a2a; border: 1px solid var(--accent2); color: var(--accent2); }
+    .status.error { background: #3a1414; border: 1px solid var(--danger); color: var(--danger); }
+    .status.info { background: #1a1a3a; border: 1px solid var(--accent); color: var(--accent); }
+    .history-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .75rem 1rem;
+      margin-top: .75rem;
+      font-size: .82rem;
+    }
+    .history-item .row { display: flex; justify-content: space-between; margin-bottom: .25rem; }
+    .badge {
+      display: inline-block;
+      padding: .15rem .5rem;
+      border-radius: 4px;
+      font-size: .75rem;
+      font-weight: 600;
+    }
+    .badge.correct { background: #0c3a2a; color: var(--accent2); }
+    .badge.wrong   { background: #3a1414; color: var(--danger); }
+    .badge.pending  { background: #2a2a3a; color: var(--muted); }
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    #connectSection { text-align: center; }
+    .hidden { display: none !important; }
+    .refresh-btn {
+      background: none; border: none; color: var(--accent); cursor: pointer;
+      font-size: 1.1rem; padding: .2rem; margin-left: auto;
+    }
+    .refresh-btn:hover { opacity: .7; }
+  </style>
+</head>
+<body>
+
+  <h1>🔮 BlockHash Predictor</h1>
+  <p class="subtitle">Shardeum EVM Testnet (Chain ID 8119)</p>
+
+  <!-- CONNECT WALLET -->
+  <div class="card" id="connectSection">
+    <h2>Connect Wallet</h2>
+    <p style="color:var(--muted);font-size:.88rem;margin-bottom:1rem;">
+      Make sure MetaMask is set to <strong>Shardeum EVM Testnet</strong>
+      (Chain 8119).
+    </p>
+    <button class="btn-primary" id="connectBtn">🔗 Connect MetaMask</button>
+    <div id="connectStatus"></div>
+  </div>
+
+  <!-- MAIN APP (hidden until connected) -->
+  <div id="appSection" class="hidden" style="width:100%;max-width:640px;">
+
+    <!-- Chain Info -->
+    <div class="card">
+      <h2>
+        📦 Chain Info
+        <button class="refresh-btn" id="refreshInfo" title="Refresh">⟳</button>
+      </h2>
+      <div class="info-row">
+        <span class="label">Connected Wallet</span>
+        <span class="value" id="walletAddr">–</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Current Block</span>
+        <span class="value" id="currentBlock">–</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Latest Block Hash</span>
+        <span class="value" id="latestHash">–</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Predicting For</span>
+        <span class="value" id="targetBlock" style="color:var(--accent2);font-weight:700;">–</span>
+      </div>
+    </div>
+
+    <!-- Prediction Options -->
+    <div class="card">
+      <h2>🎯 Submit Prediction</h2>
+      <p style="color:var(--muted);font-size:.85rem;margin-bottom:.5rem;">
+        Pick a generated hash option or enter your own:
+      </p>
+      <div class="options-grid" id="optionsGrid"></div>
+      <input
+        type="text"
+        class="custom-input"
+        id="customHash"
+        placeholder="Or paste a custom bytes32 (0x...64 hex chars)"
+      />
+      <button class="btn-primary" id="submitBtn" disabled>
+        Submit Prediction
+      </button>
+      <div id="submitStatus"></div>
+    </div>
+
+    <!-- Reveal Predictions -->
+    <div class="card">
+      <h2>🔍 My Predictions</h2>
+      <button class="btn-secondary" id="loadHistoryBtn">Load My Predictions</button>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+  <!-- CONTRACT_ADDRESS config -->
+  <div class="card" style="max-width:640px;margin-top:1rem;text-align:center;">
+    <p style="font-size:.8rem;color:var(--muted);">
+      Contract:
+      <input id="contractAddrInput" class="custom-input"
+        style="margin-top:.5rem;text-align:center;"
+        value="0xE5FF751467fFdE6F04E9469ca7d2Dba9B4d0d16D" />
+    </p>
+  </div>
+
+  <script>
+    // ── ABI for the contract ──────────────────────────────────────────
+    const ABI = [
+      "function submitPrediction(bytes32 _predictedHash) external returns (uint256)",
+      "function revealPrediction(uint256 _predictionId) external",
+      "function currentBlockNumber() view returns (uint256)",
+      "function getBlockHash(uint256 _blockNumber) view returns (bytes32)",
+      "function totalPredictions() view returns (uint256)",
+      "function getPrediction(uint256 _id) view returns (address,uint256,bytes32,bytes32,bool,bool,uint256)",
+      "function getUserPredictions(address _user) view returns (uint256[])",
+      "event PredictionSubmitted(uint256 indexed predictionId, address indexed predictor, uint256 targetBlock, bytes32 predictedHash)",
+      "event PredictionRevealed(uint256 indexed predictionId, address indexed predictor, bytes32 actualHash, bool correct)"
+    ];
+
+    const RPC_URL   = "https://api-mezame.shardeum.org";
+    const CHAIN_ID  = 8119;
+    const EXPLORER  = "https://explorer-mezame.shardeum.org";
+    const CONTRACT_ADDR = "0xE5FF751467fFdE6F04E9469ca7d2Dba9B4d0d16D";
+
+    let provider, signer, contract, userAddress;
+    let selectedHash = null;
+
+    // ── ethers from CDN (loaded below) ───────────────────────────────
+    const ethersScript = document.createElement("script");
+    ethersScript.src = "https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js";
+    ethersScript.onload = () => console.log("ethers.js loaded");
+    document.head.appendChild(ethersScript);
+
+    function getEthers() { return window.ethers; }
+
+    // ── Utility ──────────────────────────────────────────────────────
+    function short(addr) { return addr.slice(0,6) + "..." + addr.slice(-4); }
+
+    function setStatus(el, msg, type) {
+      el.className = "status " + type;
+      el.innerHTML = msg;
+      el.classList.remove("hidden");
+    }
+
+    function generateOptions(latestHash, blockNumber) {
+      const { solidityPackedKeccak256 } = getEthers();
+      const opts = [];
+      for (let i = 1; i <= 4; i++) {
+        opts.push(
+          solidityPackedKeccak256(
+            ["bytes32", "uint256", "uint256"],
+            [latestHash, blockNumber, i]
+          )
+        );
+      }
+      return opts;
+    }
+
+    // ── Connect ─────────────────────────────────────────────────────
+    document.getElementById("connectBtn").addEventListener("click", async () => {
+      const ethers = getEthers();
+      if (!ethers) { alert("ethers.js not loaded yet, wait a moment."); return; }
+      if (!window.ethereum) { alert("MetaMask not detected!"); return; }
+
+      try {
+        // Request network switch / add
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: "0x" + CHAIN_ID.toString(16) }]
+          });
+        } catch (switchErr) {
+          if (switchErr.code === 4902) {
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [{
+                chainId: "0x" + CHAIN_ID.toString(16),
+                chainName: "Shardeum EVM Testnet",
+                rpcUrls: [RPC_URL],
+                blockExplorerUrls: [EXPLORER],
+                nativeCurrency: { name: "SHM", symbol: "SHM", decimals: 18 }
+              }]
+            });
+          }
+        }
+
+        provider = new ethers.BrowserProvider(window.ethereum);
+        signer   = await provider.getSigner();
+        userAddress = await signer.getAddress();
+
+        document.getElementById("connectSection").classList.add("hidden");
+        document.getElementById("appSection").classList.remove("hidden");
+        document.getElementById("walletAddr").textContent = short(userAddress);
+
+        await refreshChainInfo();
+      } catch (err) {
+        setStatus(document.getElementById("connectStatus"), "❌ " + err.message, "error");
+      }
+    });
+
+    // ── Refresh Chain Info ───────────────────────────────────────────
+    async function refreshChainInfo() {
+      const ethers = getEthers();
+      const currentBlock = await provider.getBlockNumber();
+      const block = await provider.getBlock(currentBlock);
+      const latestHash = block.hash;
+
+      document.getElementById("currentBlock").textContent  = "#" + currentBlock;
+      document.getElementById("latestHash").textContent    = latestHash;
+      document.getElementById("targetBlock").textContent   = "#" + (currentBlock + 1);
+
+      // Build option buttons
+      const options = generateOptions(latestHash, currentBlock);
+      const grid = document.getElementById("optionsGrid");
+      grid.innerHTML = "";
+      selectedHash = null;
+      document.getElementById("submitBtn").disabled = true;
+
+      options.forEach((opt, i) => {
+        const btn = document.createElement("button");
+        btn.className = "option-btn";
+        btn.textContent = `Option ${i + 1}: ${opt}`;
+        btn.addEventListener("click", () => {
+          grid.querySelectorAll(".option-btn").forEach(b => b.classList.remove("selected"));
+          btn.classList.add("selected");
+          selectedHash = opt;
+          document.getElementById("customHash").value = "";
+          document.getElementById("submitBtn").disabled = false;
+        });
+        grid.appendChild(btn);
+      });
+    }
+
+    document.getElementById("refreshInfo").addEventListener("click", refreshChainInfo);
+
+    // custom hash input
+    document.getElementById("customHash").addEventListener("input", (e) => {
+      const val = e.target.value.trim();
+      if (val.startsWith("0x") && val.length === 66) {
+        selectedHash = val;
+        document.getElementById("optionsGrid").querySelectorAll(".option-btn").forEach(b => b.classList.remove("selected"));
+        document.getElementById("submitBtn").disabled = false;
+      } else if (val === "") {
+        selectedHash = null;
+        document.getElementById("submitBtn").disabled = true;
+      }
+    });
+
+    // ── Submit Prediction ───────────────────────────────────────────
+    document.getElementById("submitBtn").addEventListener("click", async () => {
+      const ethers = getEthers();
+      const addr = document.getElementById("contractAddrInput").value.trim();
+      if (!addr) { alert("Paste the contract address at the bottom first!"); return; }
+      if (!selectedHash) return;
+
+      const submitBtn = document.getElementById("submitBtn");
+      const statusEl  = document.getElementById("submitStatus");
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner"></span> Submitting...';
+
+      try {
+        contract = new ethers.Contract(addr, ABI, signer);
+        const tx = await contract.submitPrediction(selectedHash);
+        setStatus(statusEl,
+          `⏳ Tx sent: <a href="${EXPLORER}/tx/${tx.hash}" target="_blank">${short(tx.hash)}</a> – waiting...`,
+          "info"
+        );
+
+        const receipt = await tx.wait();
+        const iface = new ethers.Interface(ABI);
+        let predId = "?";
+        for (const log of receipt.logs) {
+          try {
+            const parsed = iface.parseLog({ topics: log.topics, data: log.data });
+            if (parsed && parsed.name === "PredictionSubmitted") predId = parsed.args[0].toString();
+          } catch (_) {}
+        }
+
+        setStatus(statusEl,
+          `✅ Prediction #${predId} stored on-chain! <a href="${EXPLORER}/tx/${tx.hash}" target="_blank">View tx</a>`,
+          "success"
+        );
+      } catch (err) {
+        setStatus(statusEl, "❌ " + err.message, "error");
+      }
+
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = "Submit Prediction";
+    });
+
+    // ── Load & Reveal Predictions ───────────────────────────────────
+    document.getElementById("loadHistoryBtn").addEventListener("click", async () => {
+      const ethers = getEthers();
+      const addr = document.getElementById("contractAddrInput").value.trim();
+      if (!addr) { alert("Paste the contract address at the bottom first!"); return; }
+
+      contract = new ethers.Contract(addr, ABI, signer);
+      const ids = await contract.getUserPredictions(userAddress);
+      const list = document.getElementById("historyList");
+      list.innerHTML = "";
+
+      if (ids.length === 0) {
+        list.innerHTML = '<p style="color:var(--muted);margin-top:.75rem;font-size:.85rem;">No predictions yet.</p>';
+        return;
+      }
+
+      for (const id of ids) {
+        const p = await contract.getPrediction(id);
+        const [predictor, targetBlock, predictedHash, actualHash, revealed, correct, timestamp] = p;
+
+        const item = document.createElement("div");
+        item.className = "history-item";
+
+        let badge;
+        if (revealed) {
+          badge = correct
+            ? '<span class="badge correct">✅ CORRECT</span>'
+            : '<span class="badge wrong">❌ WRONG</span>';
+        } else {
+          badge = '<span class="badge pending">⏳ PENDING</span>';
+        }
+
+        item.innerHTML = `
+          <div class="row"><span style="color:var(--muted)">ID</span><span>#${id.toString()}</span></div>
+          <div class="row"><span style="color:var(--muted)">Target Block</span><span>#${targetBlock.toString()}</span></div>
+          <div class="row"><span style="color:var(--muted)">Predicted</span><span style="font-family:monospace;font-size:.75rem;word-break:break-all">${predictedHash}</span></div>
+          ${revealed ? `<div class="row"><span style="color:var(--muted)">Actual</span><span style="font-family:monospace;font-size:.75rem;word-break:break-all">${actualHash}</span></div>` : ""}
+          <div class="row"><span style="color:var(--muted)">Status</span>${badge}</div>
+        `;
+
+        if (!revealed) {
+          const revealBtn = document.createElement("button");
+          revealBtn.className = "btn-secondary";
+          revealBtn.style.marginTop = ".5rem";
+          revealBtn.textContent = "🔍 Reveal Result";
+          revealBtn.addEventListener("click", async () => {
+            revealBtn.disabled = true;
+            revealBtn.innerHTML = '<span class="spinner"></span> Revealing...';
+            try {
+              const tx = await contract.revealPrediction(id);
+              await tx.wait();
+              revealBtn.innerHTML = "✅ Revealed! Reload to see.";
+              // Reload predictions
+              document.getElementById("loadHistoryBtn").click();
+            } catch (err) {
+              revealBtn.innerHTML = "❌ " + (err.reason || err.message).slice(0, 60);
+            }
+          });
+          item.appendChild(revealBtn);
+        }
+
+        list.appendChild(item);
+      }
+    });
+  </script>
+</body>
+</html>
